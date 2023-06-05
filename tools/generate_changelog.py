@@ -55,8 +55,11 @@ def main():
         categories = repo.get_local_config().get(
             'categories', config.default_changelog_categories)
 
-        print(release_process._generate_changelog(
-            repo, '%s..' % args.tag, categories, show_missing=True))
+        print(
+            release_process._generate_changelog(
+                repo, f'{args.tag}..', categories, show_missing=True
+            )
+        )
 
 
 if __name__ == '__main__':

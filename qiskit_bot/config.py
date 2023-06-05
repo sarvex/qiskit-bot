@@ -58,7 +58,7 @@ def load_config(path):
         LOG.info('Loaded config\nRepos: %s' % ','.join(
             [x['name'] for x in raw_config['repos']]))
     if 'meta_repo' in config:
-        LOG.info('meta_repo: %s' % config['meta_repo'])
+        LOG.info(f"meta_repo: {config['meta_repo']}")
     return config
 
 
@@ -82,7 +82,7 @@ def load_repo_config(repo):
     try:
         local_config_schema(raw_config)
     except vol.MultipleInvalid:
-        LOG.exception('Invalid local repo config for %s' % repo.repo_name)
+        LOG.exception(f'Invalid local repo config for {repo.repo_name}')
         return {}
-    LOG.info('Loaded local repo config for %s' % repo.repo_name)
+    LOG.info(f'Loaded local repo config for {repo.repo_name}')
     return raw_config

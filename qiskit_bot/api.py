@@ -96,9 +96,7 @@ def list_routes():
     """List routes on gets to root."""
     output = []
     for rule in APP.url_map.iter_rules():
-        options = {}
-        for arg in rule.arguments:
-            options[arg] = "[{0}]".format(arg)
+        options = {arg: "[{0}]".format(arg) for arg in rule.arguments}
         url = flask.url_for(rule.endpoint, **options)
         out_dict = {
             'name': rule.endpoint,
@@ -112,8 +110,9 @@ def list_routes():
 @WEBHOOK.hook(event_type='push')
 def on_push(data):
     """Handle github pushes."""
-    LOG.debug('Received push event for repo: %s sha1: %s' % (
-        data['repository']['full_name'], data['after']))
+    LOG.debug(
+        f"Received push event for repo: {data['repository']['full_name']} sha1: {data['after']}"
+    )
     global REPOS
 
 
@@ -121,14 +120,15 @@ def on_push(data):
 def on_create(data):
     global REPOS
     if data['ref_type'] == 'tag':
-        tag_name = data['ref']
         repo_name = data['repository']['full_name']
+        tag_name = data['ref']
         if repo_name in REPOS:
             release_process.finish_release(tag_name, REPOS[repo_name],
                                            CONFIG, META_REPO)
         else:
-            LOG.warn('Recieved webhook event for %s, but this is not a '
-                     'configured repository.' % repo_name)
+            LOG.warn(
+                f'Recieved webhook event for {repo_name}, but this is not a configured repository.'
+            )
 
 
 @WEBHOOK.hook(event_type='pull_request')
@@ -150,12 +150,12 @@ def on_pull_event(data):
 
     if data['action'] in ('opened', 'ready_for_review'):
         repo_name = data['repository']['full_name']
-        pr_number = data['pull_request']['number']
         if repo_name in REPOS:
             community.add_community_label(
                 data["pull_request"], REPOS[repo_name]
             )
             if not data['pull_request']['draft']:
+                pr_number = data['pull_request']['number']
                 notifications.trigger_notifications(
                     pr_number, REPOS[repo_name], CONFIG
                 )

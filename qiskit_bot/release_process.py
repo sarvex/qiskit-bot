@@ -39,22 +39,21 @@ def bump_meta(meta_repo, repo, version_number):
     if repo_config.get('optional_package'):
         return None
     if int(version_number_pieces[2]) == 0:
-        new_meta_version = '%s.%s.%s' % (meta_version_pieces[0],
-                                         int(meta_version_pieces[1]) + 1, 0)
+        new_meta_version = (
+            f'{meta_version_pieces[0]}.{int(meta_version_pieces[1]) + 1}.0'
+        )
     else:
-        new_meta_version = '%s.%s.%s' % (meta_version_pieces[0],
-                                         meta_version_pieces[1],
-                                         int(meta_version_pieces[2]) + 1)
+        new_meta_version = f'{meta_version_pieces[0]}.{meta_version_pieces[1]}.{int(meta_version_pieces[2]) + 1}'
     package_name = repo.repo_name.split('/')[1]
     pulls = meta_repo.gh_repo.get_pulls(state='open')
     setup_py_path = os.path.join(meta_repo.local_path, 'setup.py')
     docs_conf_path = os.path.join(
         os.path.join(meta_repo.local_path, 'docs'), 'conf.py')
-    title = 'Bump Meta'
-    requirements_str = package_name + '==' + version_number
-    LOG.info("Processing meta repo bump for %s" % requirements_str)
+    requirements_str = f'{package_name}=={version_number}'
+    LOG.info(f"Processing meta repo bump for {requirements_str}")
 
     bump_pr = None
+    title = 'Bump Meta'
     for pull in pulls:
         if pull.title == title:
             bump_pr = pull
@@ -63,16 +62,15 @@ def bump_meta(meta_repo, repo, version_number):
             break
     else:
         branch_name = meta_repo.repo_config.get('default_branch', 'master')
-        git.create_branch('bump_meta', 'origin/%s' % branch_name, meta_repo)
+        git.create_branch('bump_meta', f'origin/{branch_name}', meta_repo)
         git.checkout_ref(meta_repo, 'bump_meta')
     # Update setup.py
     buf = io.StringIO()
     with open(setup_py_path, 'r') as fd:
         for line in fd:
             if package_name in line:
-                old_version = re.search(package_name + '==(.*)', line)[1]
-                out_line = line.replace(package_name + '==' + old_version,
-                                        requirements_str)
+                old_version = re.search(f'{package_name}==(.*)', line)[1]
+                out_line = line.replace(f'{package_name}=={old_version}', requirements_str)
                 if not out_line.endswith('",\n') and out_line.endswith('\n'):
                     buf.write(out_line.replace('\n', '",\n'))
             elif 'version=' in line:
@@ -82,14 +80,16 @@ def bump_meta(meta_repo, repo, version_number):
                 new_version_pieces = new_meta_version.split('.')
                 if old_version != new_meta_version and \
                         old_version_pieces[1] <= new_version_pieces[1]:
-                    LOG.debug('Bumping meta version %s to %s' % (
-                              old_version, new_meta_version))
-                    out_line = line.replace('version="%s"' % old_version,
-                                            'version="%s"' % new_meta_version)
+                    LOG.debug(f'Bumping meta version {old_version} to {new_meta_version}')
+                    out_line = line.replace(
+                        f'version="{old_version}"',
+                        f'version="{new_meta_version}"',
+                    )
                     buf.write(out_line)
                 else:
-                    LOG.debug('Not bumping meta version %s it is the same or '
-                              'less than %s' % (old_version, new_meta_version))
+                    LOG.debug(
+                        f'Not bumping meta version {old_version} it is the same or less than {new_meta_version}'
+                    )
                     buf.write(line)
             else:
                 buf.write(line)
@@ -148,19 +148,16 @@ def _generate_changelog(repo, log_string, categories, show_missing=False):
         pieces = line.split(' ')
         if 'tag:' in line:
             summary = ' '.join(pieces[3:])
-            match = pr_regex.match(summary)
-            if match:
+            if match := pr_regex.match(summary):
                 pr = match[1][1:]
             else:
                 continue
         else:
             summary = ' '.join(pieces[1:])
-            match = pr_regex.match(summary)
-            if match:
-                if match[1][1:]:
-                    pr = match[1][1:]
-                else:
-                    continue
+            if not (match := pr_regex.match(summary)):
+                continue
+            if match[1][1:]:
+                pr = match[1][1:]
             else:
                 continue
         git_summaries.append((summary, pr))
@@ -191,8 +188,8 @@ def _generate_changelog(repo, log_string, categories, show_missing=False):
             if show_missing:
                 missing_list.append(summary)
     changelog = "# Changelog\n"
-    for label in changelog_dict:
-        if not changelog_dict[label]:
+    for label, value in changelog_dict.items():
+        if not value:
             continue
         changelog += '## %s\n' % categories[label]
         for pr in changelog_dict[label]:
@@ -211,7 +208,7 @@ def _generate_changelog(repo, log_string, categories, show_missing=False):
 def create_github_release(repo, log_string, version_number, categories,
                           prerelease=False):
     changelog = _generate_changelog(repo, log_string, categories)
-    release_name = repo.name + ' ' + version_number
+    release_name = f'{repo.name} {version_number}'
     repo.gh_repo.create_git_release(version_number, release_name, changelog,
                                     prerelease=prerelease)
 
@@ -274,7 +271,7 @@ def finish_release(version_number, repo, conf, meta_repo):
         # Pull latest default_branch
         git.checkout_default_branch(repo, pull=True)
         if repo_config.get('branch_on_release'):
-            branch_name = 'stable/%s' % branch_number
+            branch_name = f'stable/{branch_number}'
             repo_branches = [x.name for x in repo.gh_repo.get_branches()]
             if int(version_number_pieces[2]) == 0 and \
                     branch_name not in repo_branches:

@@ -28,57 +28,54 @@ class Repo(object):
         self.repo_name = repo_name
         self.name = self._get_name()
         self.gh_repo = self._get_gh_repo(access_token)
-        if repo_config is None:
-            self.repo_config = {}
-        else:
-            self.repo_config = repo_config
+        self.repo_config = {} if repo_config is None else repo_config
         if not os.path.isdir(self.local_path):
             self._create_repo()
             self._create_ssh_remote()
         else:
-            LOG.info('Local repo clone at %s already exists, not creating' %
-                     self.local_path)
+            LOG.info(f'Local repo clone at {self.local_path} already exists, not creating')
         self.ssh_remote = 'github'
         self.local_config = self.get_local_config()
 
     def _get_name(self):
         repo = self.repo_name.split('/')[1]
         pieces = repo.split('-')
-        name = ''
-        for p in pieces:
-            if p == 'ibmq':
-                name += 'IBMQ '
-            else:
-                name += p.capitalize() + ' '
-        return name
+        return ''.join(
+            'IBMQ ' if p == 'ibmq' else f'{p.capitalize()} ' for p in pieces
+        )
 
     def _create_repo(self):
-        LOG.info('Creating local clone of %s at %s' % (self.repo_name,
-                                                       self.local_path))
-        res = subprocess.run(['git', 'clone',
-                              'https://github.com/%s' % self.repo_name,
-                              self.local_path],
-                             check=True,
-                             capture_output=True)
+        LOG.info(f'Creating local clone of {self.repo_name} at {self.local_path}')
+        res = subprocess.run(
+            [
+                'git',
+                'clone',
+                f'https://github.com/{self.repo_name}',
+                self.local_path,
+            ],
+            check=True,
+            capture_output=True,
+        )
         LOG.debug('git clone https://github.com/%s '
                   '%s\nstdout:\n%s\nstderr:\n%s' % (self.repo_name,
                                                     self.local_path,
                                                     res.stdout, res.stderr))
 
     def _create_ssh_remote(self):
-        LOG.info('Creating ssh remote for %s' % self.repo_name)
-        res = subprocess.run(['git', 'remote', 'add', 'github',
-                              'git@github.com:%s' % self.repo_name],
-                             cwd=self.local_path, capture_output=True,
-                             check=True)
+        LOG.info(f'Creating ssh remote for {self.repo_name}')
+        res = subprocess.run(
+            ['git', 'remote', 'add', 'github', f'git@github.com:{self.repo_name}'],
+            cwd=self.local_path,
+            capture_output=True,
+            check=True,
+        )
         LOG.debug('git remote add github git@github.com/%s\n'
                   'stdout:\n%s\nstderr:\n%s' % (self.repo_name,
                                                 res.stdout, res.stderr))
 
     def _get_gh_repo(self, access_token):
         gh_session = Github(access_token)
-        repo = gh_session.get_repo(self.repo_name)
-        return repo
+        return gh_session.get_repo(self.repo_name)
 
     def get_local_config(self):
         return config.load_repo_config(self)
